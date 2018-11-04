@@ -1,4 +1,3 @@
 *.pyc
 .idea/Graph2Seq.iml
 .idea/*.xml
-saved_model/*
