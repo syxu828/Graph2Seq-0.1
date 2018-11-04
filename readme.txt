@@ -15,15 +15,21 @@ To train your graph-to-sequence model, you need:
 
 (2) Modify some hyper-parameters according to your task in the main/configure.py
 
-(3) train the model by running the following code
-    "train -sample_size_per_layer=100 -sample_layer_size=6 -hidden_layer_dim=50 -epochs=300"
+(3) train the model on CPU by running the following code
+    "python3 run_model.py train -sample_size_per_layer=100 -sample_layer_size=5 -hidden_layer_dim=50 -epochs=300"
     The model that performs the best on the dev data will be saved in the dir "saved_model"
+    
+    Or on GPU:
+    CUDA_VISIBLE_DEVICES=[xx] python3 run_model.py train -sample_size_per_layer=100 -sample_layer_size=5 -hidden_layer_dim=50 -epochs=300
 
-(4) test the model by running the following code
-    "test -sample_size_per_layer=100 -sample_layer_size=6 -hidden_layer_dim=50 -epochs=300"
+(4) test the model on CPU by running the following code
+    "python3 run_model.py test -sample_size_per_layer=100 -sample_layer_size=5 -hidden_layer_dim=50 -epochs=300"
     The prediction result will be saved in saved_model/prediction.txt
 
-
+    Or on GPU:
+    CUDA_VISIBLE_DEVICES=[xx] python3 run_model.py train -sample_size_per_layer=100 -sample_layer_size=5 -hidden_layer_dim=50 -epochs=300
+    
+(5) We hve uploaded a pretrained model, and you can directl run the test on the SDP-100 task. 
 
 
 
