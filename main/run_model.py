@@ -214,7 +214,6 @@ if __name__ == "__main__":
     argparser.add_argument("-sample_layer_size", type=int, default=4, help="sample layer size")
     argparser.add_argument("-epochs", type=int, default=100, help="training epochs")
     argparser.add_argument("-learning_rate", type=float, default=conf.learning_rate, help="learning rate")
-    argparser.add_argument("-word_embedding_dim", type=int, default=conf.word_embedding_dim, help="word embedding dim")
     argparser.add_argument("-hidden_layer_dim", type=int, default=conf.hidden_layer_dim)
 
     config = argparser.parse_args()
@@ -224,7 +223,6 @@ if __name__ == "__main__":
     conf.sample_size_per_layer = config.sample_size_per_layer
     conf.epochs = config.epochs
     conf.learning_rate = config.learning_rate
-    conf.word_embedding_dim = config.word_embedding_dim
     conf.hidden_layer_dim = config.hidden_layer_dim
 
     main(mode)

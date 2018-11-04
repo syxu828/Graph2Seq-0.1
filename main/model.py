@@ -20,7 +20,6 @@ class Graph2SeqNN(object):
         self.word_vocab_size = conf.word_vocab_size
         self.l2_lambda = conf.l2_lambda
         self.path_embed_method = path_embed_method
-        # self.word_embedding_dim = conf.word_embedding_dim
         self.word_embedding_dim = conf.hidden_layer_dim
         self.encoder_hidden_dim = conf.encoder_hidden_dim
 
@@ -74,7 +73,6 @@ class Graph2SeqNN(object):
         self.decoder_train_inputs_embedded = tf.nn.embedding_lookup(self.word_embeddings, self.decoder_train_inputs)
 
 
-
     def encode(self):
         with tf.variable_scope("embedding_layer"):
             pad_word_embedding = tf.zeros([1, self.word_embedding_dim])  # this is for the PAD symbol
@@ -83,8 +81,6 @@ class Graph2SeqNN(object):
                                                                             initializer=tf.contrib.layers.xavier_initializer(), trainable=True)], 0)
 
         with tf.variable_scope("graph_encoding_layer"):
-
-            # self.encoder_outputs, self.encoder_state = self.gcn_encode()
 
             # this is for optimizing gcn
             encoder_outputs, encoder_state = self.optimized_gcn_encode()
