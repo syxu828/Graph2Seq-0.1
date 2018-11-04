@@ -32,4 +32,13 @@ To train your graph-to-sequence model, you need:
 (5) We hve uploaded a pretrained model, and you can directl run the test on the SDP-100 task. 
 
 
+Please cite our work if you like or are using our codes for your projects!
 
+Kun Xu, Lingfei Wu, Zhiguo Wang, Yansong Feng, Michael Witbrock, and Vadim Sheinin (first and second authors contributed equally), "Graph2Seq: Graph to Sequence Learning with Attention-based Neural Networks", arXiv preprint arXiv:1804.00823.
+
+@article{xu2018graph2seq, 
+title={Graph2Seq: Graph to Sequence Learning with Attention-based Neural Networks}, 
+author={Xu, Kun and Wu, Lingfei and Wang, Zhiguo and Feng, Yansong and Witbrock, Michael and Sheinin, Vadim}, 
+journal={arXiv preprint arXiv:1804.00823}, 
+year={2018} 
+} 
