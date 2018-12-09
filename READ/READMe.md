@@ -27,6 +27,10 @@ To train your graph-to-sequence model, you need:
 
 (5) You can run the pretrained mode on SDP-100 task by directly running the test code (see step 4). The test acc is 97.7.
 
+# Env Setting
+(1) Python 3.5
+(2) Tensorflow 1.8.0
+
 # How To Cite The Codes
 Please cite our work if you like or are using our codes for your projects!
 
