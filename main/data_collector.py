@@ -171,8 +171,23 @@ def vectorize_batch_graph(graph, word_idx):
     # PAD node directs to the PAD node
     g_bw_adj_v.append([len(g_bw_adj.keys()) for _ in range(degree_max_size)])
 
+    # ============== vectorize nodes info ====================
+    g_nodes = graph['g_nodes']
+    graph_max_size = 0
+    for nodes in g_nodes:
+        graph_max_size = max(graph_max_size, len(nodes))
+
+    g_node_v = []
+    for nodes in g_nodes:
+        mask = [1 for _ in range(len(nodes))]
+        for _ in range(graph_max_size - len(nodes)):
+            nodes.append(len(g_fw_adj.keys()))
+            mask.append(0)
+        nodes = nodes[:graph_max_size]
+        g_node_v.append(nodes)
+
     gv['g_ids'] = graph['g_ids']
-    gv['g_nodes'] =np.array(graph['g_nodes'])
+    gv['g_nodes'] =np.array(g_node_v)
     gv['g_bw_adj'] = np.array(g_bw_adj_v)
     gv['g_fw_adj'] = np.array(g_fw_adj_v)
 
