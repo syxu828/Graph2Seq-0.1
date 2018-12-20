@@ -212,21 +212,28 @@ class Graph2SeqNN(object):
 
             if self.path_embed_method == "lstm":
                 self.decoder_cell = self._build_decode_cell()
-                if self.mode == "test" and beam_width > 0:
-                    memory = seq2seq.tile_batch(self.encoder_outputs, multiplier=beam_width)
-                    source_sequence_length = seq2seq.tile_batch(self.source_sequence_length, multiplier=beam_width)
-                    encoder_state = seq2seq.tile_batch(self.encoder_state, multiplier=beam_width)
-                    batch_size = self.batch_size * beam_width
-                else:
-                    memory = encoder_outputs
-                    source_sequence_length = source_sequence_length
-                    encoder_state = encoder_state
+                if self.decoder_type == "beam" and self.beam_width > 0:
+                    beam_memory = seq2seq.tile_batch(encoder_outputs, multiplier=self.beam_width)
+                    beam_source_sequence_length = seq2seq.tile_batch(source_sequence_length, multiplier=self.beam_width)
+                    beam_encoder_state = seq2seq.tile_batch(encoder_state, multiplier=self.beam_width)
+                    beam_batch_size = self.batch_size * self.beam_width
+                    attention_mechanism = seq2seq.BahdanauAttention(self.hidden_layer_dim, beam_memory,
+                                                                    memory_sequence_length=beam_source_sequence_length)
+                    self.beam_decoder_cell = seq2seq.AttentionWrapper(self.decoder_cell, attention_mechanism,
+                                                                 attention_layer_size=self.hidden_layer_dim)
+                    self.beam_decoder_initial_state = self.beam_decoder_cell    .zero_state(beam_batch_size, tf.float32).clone(
+                        cell_state=beam_encoder_state)
+
+                memory = encoder_outputs
+                source_sequence_length = source_sequence_length
+                encoder_state = encoder_state
 
                 attention_mechanism = seq2seq.BahdanauAttention(self.hidden_layer_dim, memory,
                                                                 memory_sequence_length=source_sequence_length)
                 self.decoder_cell = seq2seq.AttentionWrapper(self.decoder_cell, attention_mechanism,
                                                              attention_layer_size=self.hidden_layer_dim)
                 self.decoder_initial_state = self.decoder_cell.zero_state(batch_size, tf.float32).clone(cell_state=encoder_state)
+
 
             projection_layer = Dense(self.word_vocab_size, use_bias=False)
 
@@ -250,10 +257,10 @@ class Graph2SeqNN(object):
                 decoder_infer = seq2seq.BasicDecoder(self.decoder_cell, decoder_infer_helper,
                                                      self.decoder_initial_state, projection_layer)
             elif decoder_type == "beam":
-                decoder_infer = seq2seq.BeamSearchDecoder(cell=self.decoder_cell, embedding=self.word_embeddings,
+                decoder_infer = seq2seq.BeamSearchDecoder(cell=self.beam_decoder_cell, embedding=self.word_embeddings,
                                                           start_tokens=tf.ones([batch_size], dtype=tf.int32),
                                                           end_token=self.EOS,
-                                                          initial_state=self.decoder_initial_state,
+                                                          initial_state=self.beam_decoder_initial_state,
                                                           beam_width=beam_width,
                                                           output_layer=projection_layer)
 

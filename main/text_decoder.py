@@ -1,11 +1,8 @@
 import configure as conf
 
 def decode_text(pred_idx, idx_word):
-    # if conf.decoder_type != "beam":
-    #     pred_idx = pred_idx[0]
-    # else:
-    #     pred_idx = np.transpose(pred_idx)
-    #     pred_idx = pred_idx[0]
+    if conf.decoder_type == "beam":
+        pred_idx = pred_idx.transpose()[0]
 
     text = ""
     for __ in range(len(pred_idx)):

@@ -30,7 +30,7 @@ deal_unknown_words = True
 seq_max_len = 11
 
 decoder_type = "greedy" # greedy, beam
-beam_width = 0
+beam_width = 4
 attention = True
 num_layers = 1 # 1 or 2
 
