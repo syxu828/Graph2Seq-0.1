@@ -216,7 +216,7 @@ class Graph2SeqNN(object):
                     beam_memory = seq2seq.tile_batch(encoder_outputs, multiplier=self.beam_width)
                     beam_source_sequence_length = seq2seq.tile_batch(source_sequence_length, multiplier=self.beam_width)
                     beam_encoder_state = seq2seq.tile_batch(encoder_state, multiplier=self.beam_width)
-                    beam_batch_size = self.batch_size * self.beam_width
+                    beam_batch_size = batch_size * self.beam_width
                     attention_mechanism = seq2seq.BahdanauAttention(self.hidden_layer_dim, beam_memory,
                                                                     memory_sequence_length=beam_source_sequence_length)
                     self.beam_decoder_cell = seq2seq.AttentionWrapper(self.decoder_cell, attention_mechanism,
