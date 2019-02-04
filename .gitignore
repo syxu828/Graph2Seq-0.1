@@ -1,3 +1,6 @@
 *.pyc
 .idea/Graph2Seq.iml
 .idea/*.xml
+saved_model/model-0.data-00000-of-00001
+saved_model/model-0.index
+saved_model/model-0.meta

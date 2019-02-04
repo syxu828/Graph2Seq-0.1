@@ -1,13 +1,20 @@
-train_data_path = "../data/no_cycle/train.data"
-dev_data_path = "../data/no_cycle/dev.data"
-test_data_path = "../data/no_cycle/test.data"
+train_data_path = "../data/ccg/train.data"
+dev_data_path = "../data/ccg/dev.data"
+test_data_path = "../data/ccg/test.data"
+
+train_ori_data_path = "../data/ccg/train.stagged"
+dev_ori_data_path = "../data/ccg/dev.stagged"
+test_ori_data_path = "../data/ccg/test.stagged"
+
+cat_path = "../data/categories"
 
 word_idx_file_path = "../data/word.idx"
 
 word_embedding_dim = 100
+supertag_embedding_dim = 100
 
 train_batch_size = 32
-dev_batch_size = 500
+dev_batch_size = 64
 test_batch_size = 500
 
 l2_lambda = 0.000001
@@ -26,6 +33,8 @@ PAD = "<PAD>"
 GO = "<GO>"
 EOS = "<EOS>"
 deal_unknown_words = True
+
+rare_tag = "<rare>"
 
 seq_max_len = 11
 

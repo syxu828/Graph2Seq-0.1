@@ -15,6 +15,7 @@ import json
 def main(mode):
 
     word_idx = {}
+    super_tag_idx = {}
 
     if mode == "train":
         epochs = conf.epochs
@@ -27,16 +28,30 @@ def main(mode):
         print("reading development data into the mem ...")
         texts_dev, graphs_dev = data_collector.read_data(conf.dev_data_path, word_idx, if_increase_dict=False)
 
+        if conf.unknown_word not in word_idx:
+            word_idx[conf.unknown_word] = len(word_idx) + 1
+
+        print("collecting categories ...")
+        supertags = data_collector.collect_categories(
+            [conf.train_ori_data_path, conf.dev_ori_data_path, conf.test_ori_data_path])
+
         print("writing word-idx mapping ...")
         disk_helper.write_word_idx(word_idx, conf.word_idx_file_path)
 
-        print("vectoring training data ...")
-        tv_train = data_collector.vectorize_data(word_idx, texts_train)
+        print("writing supertags ...")
+        disk_helper.write_categories(supertags, conf.cat_path)
+        for supertag in supertags:
+            if supertag not in super_tag_idx:
+                super_tag_idx[supertag] = len(super_tag_idx)
 
-        print("vectoring dev data ...")
-        tv_dev = data_collector.vectorize_data(word_idx, texts_dev)
+        print("vectoring training text ...")
+        tv_train = data_collector.vectorize_seq(super_tag_idx, texts_train)
 
-        conf.word_vocab_size = len(word_idx.keys()) + 1
+        print("vectoring dev text ...")
+        tv_dev = data_collector.vectorize_seq(super_tag_idx, texts_dev)
+
+        conf.word_vocab_size = len(word_idx.keys())
+        conf.supertag_vocab_size = len(super_tag_idx.keys())
 
         with tf.Graph().as_default():
             with tf.Session() as sess:
@@ -69,16 +84,15 @@ def main(mode):
                     loss_sum = 0.0
                     for start in range(0, n_train, train_batch_size):
                         end = min(start+train_batch_size, n_train)
-                        tv = []
                         graphs = []
+                        tv = []
                         for _ in range(start, end):
                             idx = temp_order[_]
                             tv.append(tv_train[idx])
                             graphs.append(graphs_train[idx])
 
-                        batch_graph = data_collector.cons_batch_graph(graphs)
+                        batch_graph = data_collector.batch_graph(graphs)
                         gv = data_collector.vectorize_batch_graph(batch_graph, word_idx)
-
                         tv, tv_real_len, loss_weights = helpers.batch(tv)
 
                         loss_op, cross_entropy = train_step(tv, tv_real_len, loss_weights, gv)
@@ -88,9 +102,9 @@ def main(mode):
                     n_dev = len(texts_dev)
                     dev_batch_size = conf.dev_batch_size
 
-                    idx_word = {}
-                    for w in word_idx:
-                        idx_word[word_idx[w]] = w
+                    idx_supertag = {}
+                    for w in super_tag_idx:
+                        idx_supertag[super_tag_idx[w]] = w
 
                     pred_texts = []
                     for start in range(0, n_dev, dev_batch_size):
@@ -101,7 +115,7 @@ def main(mode):
                             tv.append(tv_dev[_])
                             graphs.append(graphs_dev[_])
 
-                        batch_graph = data_collector.cons_batch_graph(graphs)
+                        batch_graph = data_collector.batch_graph(graphs)
                         gv = data_collector.vectorize_batch_graph(batch_graph, word_idx)
 
                         tv, tv_real_len, loss_weights = helpers.batch(tv)
@@ -109,9 +123,9 @@ def main(mode):
                         sample_id = train_step(tv, tv_real_len, loss_weights, gv, if_pred_on_dev=True)[0]
 
                         for tmp_id in sample_id:
-                            pred_texts.append(text_decoder.decode_text(tmp_id, idx_word))
+                            pred_texts.append(text_decoder.decode_text(tmp_id, idx_supertag))
 
-                    acc = evaluate(type="acc", golds=texts_dev, preds=pred_texts)
+                    acc = evaluate(type="word_acc", golds=texts_dev, preds=pred_texts, supertag_idx=super_tag_idx)
                     if_save_model = False
                     if acc >= best_acc_on_dev:
                         best_acc_on_dev = acc
@@ -144,12 +158,18 @@ def main(mode):
         print("reading word idx mapping from file")
         word_idx = disk_helper.read_word_idx_from_file(conf.word_idx_file_path)
 
+        print("reading supertags from file")
+        supertags = disk_helper.read_categories(conf.cat_path)
+        for supertag in supertags:
+            if supertag not in super_tag_idx:
+                super_tag_idx[supertag] = len(super_tag_idx)
+
         idx_word = {}
         for w in word_idx:
             idx_word[word_idx[w]] = w
 
         print("vectoring test data ...")
-        tv_test = data_collector.vectorize_data(word_idx, texts_test)
+        tv_test = data_collector.vectorize_seq(super_tag_idx, texts_test)
 
         conf.word_vocab_size = len(word_idx.keys()) + 1
 
@@ -186,7 +206,7 @@ def main(mode):
                         graphs.append(graphs_test[_])
                         global_graphs.append(graphs_test[_])
 
-                    batch_graph = data_collector.cons_batch_graph(graphs)
+                    batch_graph = data_collector.batch_graph(graphs)
                     gv = data_collector.vectorize_batch_graph(batch_graph, word_idx)
                     tv, tv_real_len, loss_weights = helpers.batch(tv)
 
@@ -194,7 +214,7 @@ def main(mode):
                     for tem_id in sample_id:
                         pred_texts.append(text_decoder.decode_text(tem_id, idx_word))
 
-                acc = evaluate(type="acc", golds=texts_test, preds=pred_texts)
+                acc = evaluate(type="acc", golds=texts_test, preds=pred_texts, supertag_idx=super_tag_idx)
                 print("acc on test set is {}".format(acc))
 
                 # write prediction result into a file
