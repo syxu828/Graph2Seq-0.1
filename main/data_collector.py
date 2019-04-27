@@ -1,75 +1,64 @@
 import numpy as np
 import json
 import configure as conf
-import codecs
-from tqdm import tqdm
+from collections import OrderedDict
 
 def read_data(input_path, word_idx, if_increase_dict):
-    graphs = []
     seqs = []
-    with codecs.open(input_path, 'r', "utf-8") as fr:
-        lines = fr.readlines()
-        for _ in tqdm(range(len(lines))):
-            line = lines[_].strip()
-            jo = json.loads(line)
+    graphs = []
+
+    if if_increase_dict:
+        word_idx[conf.GO] = 1
+        word_idx[conf.EOS] = 2
+        word_idx[conf.unknown_word] = 3
+
+    with open(input_path, 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            line = line.strip()
+            jo = json.loads(line, object_pairs_hook=OrderedDict)
             seq = jo['seq']
             seqs.append(seq)
             if if_increase_dict:
-                features = jo['g_ids_features']
-                for id in features:
-                    w = features[id]
+                for w in seq.split():
                     if w not in word_idx:
                         word_idx[w] = len(word_idx) + 1
 
+                for id in jo['g_ids_features']:
+                    features = jo['g_ids_features'][id]
+                    for w in features.split():
+                        if w not in word_idx:
+                            word_idx[w] = len(word_idx) + 1
+
             graph = {}
+            graph['g_ids'] = jo['g_ids']
             graph['g_ids_features'] = jo['g_ids_features']
             graph['g_adj'] = jo['g_adj']
             graphs.append(graph)
 
     return seqs, graphs
 
-def vectorize_seq(word_idx, texts):
+def vectorize_data(word_idx, texts):
     tv = []
     for text in texts:
         stv = []
         for w in text.split():
             if w not in word_idx:
-                stv.append(word_idx[conf.rare_tag])
+                stv.append(word_idx[conf.unknown_word])
             else:
                 stv.append(word_idx[w])
         tv.append(stv)
     return tv
 
-def collect_categories(paths):
-    supertag_freq = {}
-    for path in paths:
-        with codecs.open(path, 'r', 'utf-8') as fr:
-            lines = fr.readlines(path)
-            for line in lines:
-                info = line.strip().split(" ")
-                for t in info:
-                    t_info = t.split("|")
-                    supertag = t_info[2]
-                    if supertag not in supertag_freq:
-                        supertag_freq[supertag] = 1
-                    else:
-                        supertag_freq[supertag] += 1
-
-    sorted_list = sorted(supertag_freq.items(), key=lambda d: d[1])
-    res = [conf.rare_tag]
-    for _ in range(len(sorted_list)):
-        freq = sorted_list[_][1]
-        if freq >= 10:
-            res.append(sorted_list[_][0])
-    return res
-
-def batch_graph(graphs):
+def cons_batch_graph(graphs):
+    g_ids = {}
     g_ids_features = {}
     g_fw_adj = {}
     g_bw_adj = {}
     g_nodes = []
 
     for g in graphs:
+        ids = g['g_ids']
         id_adj = g['g_adj']
         features = g['g_ids_features']
 
@@ -79,11 +68,11 @@ def batch_graph(graphs):
         # used in the creation of fw_adj and bw_adj
 
         id_gid_map = {}
-        offset = len(g_ids_features.keys())
-        for id in features.keys():
-            feat = features[id]
+        offset = len(g_ids.keys())
+        for id in ids:
             id = int(id)
-            g_ids_features[offset + id] = feat
+            g_ids[offset + id] = len(g_ids.keys())
+            g_ids_features[offset + id] = features[str(id)]
             id_gid_map[id] = offset + id
             nodes.append(offset + id)
         g_nodes.append(nodes)
@@ -102,7 +91,7 @@ def batch_graph(graphs):
                     g_bw_adj[g_t] = []
                 g_bw_adj[g_t].append(g_id)
 
-    node_size = len(g_ids_features.keys())
+    node_size = len(g_ids.keys())
     for id in range(node_size):
         if id not in g_fw_adj:
             g_fw_adj[id] = []
@@ -110,6 +99,7 @@ def batch_graph(graphs):
             g_bw_adj[id] = []
 
     graph = {}
+    graph['g_ids'] = g_ids
     graph['g_ids_features'] = g_ids_features
     graph['g_nodes'] = g_nodes
     graph['g_fw_adj'] = g_fw_adj
@@ -117,19 +107,16 @@ def batch_graph(graphs):
 
     return graph
 
-
-
 def vectorize_batch_graph(graph, word_idx):
     # vectorize the graph feature and normalize the adj info
     id_features = graph['g_ids_features']
     gv = {}
     nv = []
-    n_len_v = []
     word_max_len = 0
     for id in id_features:
         feature = id_features[id]
         word_max_len = max(word_max_len, len(feature.split()))
-    # word_max_len = min(word_max_len, conf.word_size_max)
+    word_max_len = min(word_max_len, conf.word_size_max)
 
     for id in graph['g_ids_features']:
         feature = graph['g_ids_features'][id]
@@ -142,24 +129,14 @@ def vectorize_batch_graph(graph, word_idx):
             else:
                 fv.append(word_idx[conf.unknown_word])
 
-        if len(fv) > word_max_len:
-            n_len_v.append(word_max_len)
-        else:
-            n_len_v.append(len(fv))
-
         for _ in range(word_max_len - len(fv)):
             fv.append(0)
         fv = fv[:word_max_len]
         nv.append(fv)
 
-    # add an all-zero vector for the PAD node
     nv.append([0 for temp in range(word_max_len)])
-    n_len_v.append(0)
-
     gv['g_ids_features'] = np.array(nv)
-    gv['g_ids_feature_lens'] = np.array(n_len_v)
 
-    # ============== vectorize adj info ======================
     g_fw_adj = graph['g_fw_adj']
     g_fw_adj_v = []
 
@@ -209,7 +186,8 @@ def vectorize_batch_graph(graph, word_idx):
         nodes = nodes[:graph_max_size]
         g_node_v.append(nodes)
 
-    gv['g_nodes'] = np.array(g_node_v)
+    gv['g_ids'] = graph['g_ids']
+    gv['g_nodes'] =np.array(g_node_v)
     gv['g_bw_adj'] = np.array(g_bw_adj_v)
     gv['g_fw_adj'] = np.array(g_fw_adj_v)
 

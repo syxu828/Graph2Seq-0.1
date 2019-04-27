@@ -40,14 +40,3 @@ def read_word_idx_from_file(path):
             else:
                 word_idx[info[0]] = int(info[1])
     return word_idx
-
-def write_categories(cats, path):
-    with codecs.open(path, 'w', 'utf-8') as f:
-        for c in cats:
-            f.write(c+"\n")
-
-def read_categories(path):
-    with codecs.open(path, 'r', "utf-8") as f:
-        lines = f.readlines()
-        res = [line.strip() for line in lines]
-        return res

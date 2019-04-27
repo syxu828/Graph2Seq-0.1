@@ -18,11 +18,9 @@ class Graph2SeqNN(object):
 
         self.mode = mode
         self.word_vocab_size = conf.word_vocab_size
-        self.supertag_vocab_size = conf.supertag_vocab_size
         self.l2_lambda = conf.l2_lambda
         self.path_embed_method = path_embed_method
         self.word_embedding_dim = conf.hidden_layer_dim
-        self.supertag_embedding_dim = conf.supertag_embedding_dim
         self.encoder_hidden_dim = conf.encoder_hidden_dim
 
         # the setting for the GCN
@@ -72,7 +70,7 @@ class Graph2SeqNN(object):
         decoder_train_targets_eos_mask = tf.one_hot(self.decoder_train_length - 1, decoder_train_targets_seq_len,
                                                     on_value=self.EOS, off_value=self.PAD, dtype=tf.int32)
         self.decoder_train_targets = tf.add(decoder_train_targets, decoder_train_targets_eos_mask)
-        self.decoder_train_inputs_embedded = tf.nn.embedding_lookup(self.supertag_embeddings, self.decoder_train_inputs)
+        self.decoder_train_inputs_embedded = tf.nn.embedding_lookup(self.word_embeddings, self.decoder_train_inputs)
 
 
     def encode(self):
@@ -81,11 +79,6 @@ class Graph2SeqNN(object):
             self.word_embeddings = tf.concat([pad_word_embedding,
                                               tf.get_variable('W_train', shape=[self.word_vocab_size,self.word_embedding_dim],
                                                                             initializer=tf.contrib.layers.xavier_initializer(), trainable=True)], 0)
-
-            pad_supertag_embedding = tf.zeros([1, self.supertag_embedding_dim])
-            self.supertag_embeddings = tf.concat([pad_supertag_embedding, tf.get_variable('WS_train', shape=[self.supertag_vocab_size, self.supertag_embedding_dim],
-                                                                                          initializer=tf.contrib.layers.xavier_initializer(), trainable=True)], 0)
-
 
         with tf.variable_scope("graph_encoding_layer"):
 
@@ -228,7 +221,7 @@ class Graph2SeqNN(object):
                                                                     memory_sequence_length=beam_source_sequence_length)
                     self.beam_decoder_cell = seq2seq.AttentionWrapper(self.decoder_cell, attention_mechanism,
                                                                  attention_layer_size=self.hidden_layer_dim)
-                    self.beam_decoder_initial_state = self.beam_decoder_cell.zero_state(beam_batch_size, tf.float32).clone(
+                    self.beam_decoder_initial_state = self.beam_decoder_cell    .zero_state(beam_batch_size, tf.float32).clone(
                         cell_state=beam_encoder_state)
 
                 memory = encoder_outputs
@@ -242,7 +235,7 @@ class Graph2SeqNN(object):
                 self.decoder_initial_state = self.decoder_cell.zero_state(batch_size, tf.float32).clone(cell_state=encoder_state)
 
 
-            projection_layer = Dense(self.supertag_vocab_size, use_bias=False)
+            projection_layer = Dense(self.word_vocab_size, use_bias=False)
 
             """For training the model"""
             if self.mode == "train":
@@ -253,18 +246,18 @@ class Graph2SeqNN(object):
                                                      projection_layer)
                 decoder_outputs_train, decoder_states_train, decoder_seq_len_train = seq2seq.dynamic_decode(decoder_train)
                 decoder_logits_train = decoder_outputs_train.rnn_output
-                self.decoder_logits_train = tf.reshape(decoder_logits_train, [batch_size, -1, self.supertag_vocab_size])
+                self.decoder_logits_train = tf.reshape(decoder_logits_train, [batch_size, -1, self.word_vocab_size])
 
             """For test the model"""
             # if self.mode == "infer" or self.if_pred_on_dev:
             if decoder_type == "greedy":
-                decoder_infer_helper = seq2seq.GreedyEmbeddingHelper(self.supertag_embeddings,
+                decoder_infer_helper = seq2seq.GreedyEmbeddingHelper(self.word_embeddings,
                                                                      tf.ones([batch_size], dtype=tf.int32),
                                                                      self.EOS)
                 decoder_infer = seq2seq.BasicDecoder(self.decoder_cell, decoder_infer_helper,
                                                      self.decoder_initial_state, projection_layer)
             elif decoder_type == "beam":
-                decoder_infer = seq2seq.BeamSearchDecoder(cell=self.beam_decoder_cell, embedding=self.supertag_embeddings,
+                decoder_infer = seq2seq.BeamSearchDecoder(cell=self.beam_decoder_cell, embedding=self.word_embeddings,
                                                           start_tokens=tf.ones([batch_size], dtype=tf.int32),
                                                           end_token=self.EOS,
                                                           initial_state=self.beam_decoder_initial_state,
